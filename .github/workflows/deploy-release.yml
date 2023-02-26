@@ -1,23 +1,41 @@
-name: 'Deploy to development'
+name: 'Deploy production'
 
 on:
   push:
-    branches: [master]
+    tags: [ v*.*.* ]
 
 jobs:
   build-and-push:
     name: 'Build and push'
-    runs-on: [self-hosted]
+    runs-on: [ self-hosted ]
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v3
 
+      - name: 'Get previous tag'
+        id: previousTag
+        run: |
+          name=$(git --no-pager tag --sort=creatordate --merged ${{ github.ref_name }} | tail -2 | head -1)
+          echo "previousTag: $name"
+          echo "previousTag=$name" >> $GITHUB_ENV
+
+      - name: 'Update CHANGELOG'
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          fromTag: ${{ github.ref_name }}
+          toTag: ${{ env.previousTag }}
+          writeToFile: false
+
       - name: 'Docker meta'
-        id: meta
         uses: docker/metadata-action@v4
+        id: meta
         with:
           images: ${{ vars.DOCKER_REGISTRY }}/bmw-nsk-api
-          tags: type=raw,value=development
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
 
       - name: 'Set up Docker Buildx'
         uses: docker/setup-buildx-action@v2
@@ -38,3 +56,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/bmw-nsk-api:buildcache
           cache-to: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/bmw-nsk-api:buildcache,mode=max
+
+      - name: 'Create Release'
+        uses: ncipollo/release-action@v1
+        id: create-release
+        with:
+          body: ${{ steps.changelog.outputs.changes }}
