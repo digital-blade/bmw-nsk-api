@@ -5,9 +5,14 @@ on:
     branches: [ master ]
     tags-ignore: [ v*.*.* ]
 
+concurrency:
+  group: 'deploy-dev'
+  cancel-in-progress: true
+
 jobs:
-  build-and-push:
-    name: 'Build and push'
+  deploy:
+    name: 'Deploy development'
+    environment: development
     runs-on: [ self-hosted ]
     steps:
       - name: 'Checkout'

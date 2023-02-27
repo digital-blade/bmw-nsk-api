@@ -4,9 +4,14 @@ on:
   push:
     tags: [ v*.*.* ]
 
+concurrency:
+  group: 'deploy-prod'
+  cancel-in-progress: true
+
 jobs:
-  build-and-push:
-    name: 'Build and push'
+  deploy:
+    name: 'Deploy production'
+    environment: production
     runs-on: [ self-hosted ]
     steps:
       - name: 'Checkout'
